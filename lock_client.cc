@@ -30,11 +30,15 @@ lock_client::stat(lock_protocol::lockid_t lid)
 lock_protocol::status
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
-	// Your lab2 part2 code goes here
+  int dummy;
+
+  return cl->call(lock_protocol::acquire, cl->id(), lid, dummy);
 }
 
 lock_protocol::status
 lock_client::release(lock_protocol::lockid_t lid)
 {
-	// Your lab2 part2 code goes here
+	int dummy;
+
+	return cl->call(lock_protocol::release, cl->id(), lid, dummy);
 }
