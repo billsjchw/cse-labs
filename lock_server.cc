@@ -25,15 +25,18 @@ lock_protocol::status
 lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &)
 {
   lock_protocol::status ret = lock_protocol::OK;
-	
+
   pthread_mutex_lock(&mutex);
+
   if (locked.count(lid) == 0) {
     locked[lid] = false;
     cvs[lid] = (pthread_cond_t *) malloc(sizeof(pthread_cond_t));
+    *cvs[lid] = PTHREAD_COND_INITIALIZER;
   }
   while (locked[lid])
     pthread_cond_wait(cvs[lid], &mutex);
   locked[lid] = true;
+
   pthread_mutex_unlock(&mutex);
 
   return ret;
@@ -43,12 +46,14 @@ lock_protocol::status
 lock_server::release(int clt, lock_protocol::lockid_t lid, int &)
 {
   lock_protocol::status ret = lock_protocol::OK;
-	
+
   pthread_mutex_lock(&mutex);
+
   if (locked.count(lid) > 0) {
     locked[lid] = false;
     pthread_cond_signal(cvs[lid]);
   }
+  
   pthread_mutex_unlock(&mutex);
 
   return ret;

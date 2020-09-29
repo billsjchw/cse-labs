@@ -30,15 +30,23 @@ lock_client::stat(lock_protocol::lockid_t lid)
 lock_protocol::status
 lock_client::acquire(lock_protocol::lockid_t lid)
 {
+  lock_protocol::status ret;
   int dummy;
 
-  return cl->call(lock_protocol::acquire, cl->id(), lid, dummy);
+  do
+    ret = cl->call(lock_protocol::acquire, cl->id(), lid, dummy);
+  while (ret != lock_protocol::OK);
+
+  return ret;
 }
 
 lock_protocol::status
 lock_client::release(lock_protocol::lockid_t lid)
 {
+  lock_protocol::status ret;
 	int dummy;
 
-	return cl->call(lock_protocol::release, cl->id(), lid, dummy);
+	ret = cl->call(lock_protocol::release, cl->id(), lid, dummy);
+
+  return ret;
 }
