@@ -15,7 +15,7 @@ class lock_server {
 
  protected:
   int nacquire;
-  pthread_mutex_t mutex;
+  pthread_mutex_t *mutex;
   std::map<lock_protocol::lockid_t, bool> locked;
   std::map<lock_protocol::lockid_t, pthread_cond_t *> cvs;
 
