@@ -51,14 +51,14 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id, int 
 
   if (revokeid != "") {
     cl = get_rpcc(revokeid);
-    cl->bind();
-    cl->call(rlock_protocol::revoke, lid, dummy);
+    if (cl != NULL)
+      cl->call(rlock_protocol::revoke, lid, dummy);
   }
 
   if (revoke) {
     cl = get_rpcc(id);
-    cl->bind();
-    cl->call(rlock_protocol::revoke, lid, dummy);
+    if (cl != NULL)
+      cl->call(rlock_protocol::revoke, lid, dummy);
   }
 
   return ret;
@@ -82,8 +82,8 @@ lock_server_cache::release(lock_protocol::lockid_t lid, std::string id, int &)
   
   if (retryid != "") {
     cl = get_rpcc(retryid);
-    cl->bind();
-    cl->call(rlock_protocol::retry, lid, dummy);
+    if (cl != NULL)
+      cl->call(rlock_protocol::retry, lid, dummy);
   }
 
   ret = lock_protocol::OK;
@@ -117,19 +117,6 @@ lock_server_cache::add_to_waiting(lock_protocol::lockid_t lid, std::string id)
 
 rpcc *
 lock_server_cache::get_rpcc(std::string hostandport) {
-  sockaddr_in dstsock;
-  rpcc *ret;
-
-  pthread_mutex_lock(mutex);
-
-  if (cli.count(hostandport) == 0) {
-    make_sockaddr(hostandport.c_str(), &dstsock);
-    cli[hostandport] = new rpcc(dstsock);
-  }
-
-  ret = cli[hostandport];
-
-  pthread_mutex_unlock(mutex);
-
-  return ret;
+  handle h(hostandport);
+  return h.safebind();
 }
