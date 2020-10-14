@@ -69,21 +69,30 @@ lock_server_cache::release(lock_protocol::lockid_t lid, std::string id, int &)
 {
   lock_protocol::status ret;
   std::string retryid = "";
+  bool revoke = false;
   rpcc *cl;
   int dummy;
 
   pthread_mutex_lock(mutex);
 
-  owner[lid] = "";
-  if (!waiting[lid].empty())
-    retryid = waiting[lid].front();
+  if (!waiting[lid].empty()) {
+    owner[lid] = retryid = waiting[lid].front();
+    waiting[lid].pop_front();
+    if (!waiting[lid].empty())
+      revoke = true;
+  } else {
+    owner[lid] = "";
+  }
 
   pthread_mutex_unlock(mutex);
   
   if (retryid != "") {
     cl = get_rpcc(retryid);
-    if (cl != NULL)
+    if (cl != NULL) {
       cl->call(rlock_protocol::retry, lid, dummy);
+      if (revoke)
+        cl->call(rlock_protocol::revoke, lid, dummy);
+    }
   }
 
   ret = lock_protocol::OK;

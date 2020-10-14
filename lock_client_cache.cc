@@ -6,8 +6,6 @@
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
-#include "tprintf.h"
-
 
 int lock_client_cache::last_port = 0;
 
@@ -134,19 +132,16 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
 }
 
 rlock_protocol::status
-lock_client_cache::retry_handler(lock_protocol::lockid_t lid, 
-                                 int &)
+lock_client_cache::retry_handler(lock_protocol::lockid_t lid, int &)
 {
-  int ret, acquire_ret, dummy;
-  
-  acquire_ret = cl->call(lock_protocol::acquire, lid, id, dummy);
+  int ret;
 
-  if (acquire_ret == lock_protocol::OK) {
-    pthread_mutex_lock(mutex);
-    state[lid] = FREE;
-    pthread_cond_signal(cv[lid]);
-    pthread_mutex_unlock(mutex);
-  }
+  pthread_mutex_lock(mutex);
+
+  state[lid] = FREE;
+  pthread_cond_signal(cv[lid]);
+
+  pthread_mutex_unlock(mutex);
 
   ret = rlock_protocol::OK;
 
