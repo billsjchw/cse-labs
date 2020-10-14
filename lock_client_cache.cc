@@ -74,7 +74,7 @@ lock_protocol::status
 lock_client_cache::release(lock_protocol::lockid_t lid)
 {
   int ret, dummy;
-  bool release;
+  bool release = false;
 
   pthread_mutex_lock(mutex);
 
@@ -107,7 +107,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
                                   int &)
 {
   int ret, dummy;
-  bool release;
+  bool release = false;
 
   pthread_mutex_lock(mutex);
 
