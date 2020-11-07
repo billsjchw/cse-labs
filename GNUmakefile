@@ -1,4 +1,4 @@
-LAB=1
+LAB=1-plus
 SOL=0
 RPC=./rpc
 LAB1GE=$(shell expr $(LAB) \>\= 1)
@@ -132,10 +132,10 @@ clean_files=rpc/rpctest rpc/*.o rpc/*.d *.o *.d yfs_client extent_server lock_se
 clean: 
 	rm $(clean_files) -rf 
 
-handin_ignore=$(clean_files) core* *log
+handin_ignore=$(clean_files) core* *log .git fxmark
 handin_file=lab$(LAB).tgz
 labdir=$(shell basename $(PWD))
 handin: 
 	@bash -c "cd ../; tar -X <(tr ' ' '\n' < <(echo '$(handin_ignore)')) -czvf $(handin_file) $(labdir); mv $(handin_file) $(labdir); cd $(labdir)"
-	@echo Please modify lab1.tgz to lab1_[your student id].tgz and upload it to ftp://skyele:public@public.sjtu.edu.cn/upload/lab1
+	@echo Please modify lab1-plus.tgz to lab1-plus_[your student id].tgz and upload it to ftp://skyele:public@public.sjtu.edu.cn/upload/lab1-plus
 	@echo Thanks!
