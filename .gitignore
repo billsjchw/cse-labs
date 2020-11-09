@@ -6,3 +6,4 @@ part1_tester
 yfs_client
 *.tgz
 yfs1/
+native/
