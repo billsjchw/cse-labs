@@ -17,6 +17,54 @@
 #include <arpa/inet.h>
 #include "lang/verify.h"
 #include "yfs_client.h"
+// #include <stdint.h>
+
+// #define barrier() __asm__ __volatile__("": : :"memory")
+
+// static inline uint64_t __attribute__((__always_inline__))
+// rdtsc_beg(void)
+// {
+//     // Don't let anything float into or out of the TSC region.
+//     // (The memory clobber on this is actually okay as long as GCC
+//     // knows that no one ever took the address of things it has in
+//     // registers.)
+//     barrier();
+//     // See the "Improved Benchmarking Method" in Intel's "How to
+//     // Benchmark Code Execution Times on Intel® IA-32 and IA-64
+//     // Instruction Set Architectures"
+//     uint64_t tsc;
+// #if defined(__x86_64__)
+//     // This generates tighter code than the __i386__ version
+//     __asm __volatile("cpuid; rdtsc; shl $32, %%rdx; or %%rdx, %%rax"
+//                      : "=a" (tsc)
+//                      : : "%rbx", "%rcx", "%rdx");
+// #elif defined(__i386__)
+//     uint32_t a, d;
+//     __asm __volatile("cpuid; rdtsc; mov %%eax, %0; mov %%edx, %1"
+//                      : "=r" (a), "=r" (d)
+//                      : : "%rax", "%rbx", "%rcx", "%rdx");
+//     tsc = ((uint64_t) a) | (((uint64_t) d) << 32);
+// #endif
+//     barrier();
+//     return tsc;
+// }
+
+// static inline uint64_t __attribute__((__always_inline__))
+// rdtsc_end(void)
+// {
+//     barrier();
+//     uint32_t a, d;
+//     __asm __volatile("rdtscp; mov %%eax, %0; mov %%edx, %1; cpuid"
+//                      : "=r" (a), "=r" (d)
+//                      : : "%rax", "%rbx", "%rcx", "%rdx");
+//     barrier();
+//     return ((uint64_t) a) | (((uint64_t) d) << 32);
+// }
+
+// uint64_t create_time = 0;
+// uint64_t unlink_time = 0;
+// uint64_t write_time = 0;
+// uint64_t lookup_time = 0;
 
 int myid;
 yfs_client *yfs;
@@ -45,7 +93,7 @@ getattr(yfs_client::inum inum, struct stat &st)
     bzero(&st, sizeof(st));
 
     st.st_ino = inum;
-    printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
+    // printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
     if(yfs->isfile(inum)){
         yfs_client::fileinfo info;
         ret = yfs->getfile(inum, info);
@@ -57,7 +105,7 @@ getattr(yfs_client::inum inum, struct stat &st)
         st.st_mtime = info.mtime;
         st.st_ctime = info.ctime;
         st.st_size = info.size;
-        printf("   getattr -> %llu\n", info.size);
+        // printf("   getattr -> %llu\n", info.size);
     } else if (yfs->isdir(inum)) {
         yfs_client::dirinfo info;
         ret = yfs->getdir(inum, info);
@@ -68,7 +116,7 @@ getattr(yfs_client::inum inum, struct stat &st)
         st.st_atime = info.atime;
         st.st_mtime = info.mtime;
         st.st_ctime = info.ctime;
-        printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
+        // printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
     } else {
         yfs_client::symlinkinfo info;
         ret = yfs->getsymlink(inum, info);
@@ -206,11 +254,13 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 #if 1
     // Change the above line to "#if 1", and your code goes here
     int r;
+    // uint64_t b = rdtsc_beg();
     if ((r = yfs->write(ino, size, off, buf, size)) == yfs_client::OK) {
         fuse_reply_write(req, size);
     } else {
         fuse_reply_err(req, ENOENT);
     }
+    // write_time += rdtsc_end() - b;
 #else
     fuse_reply_err(req, ENOSYS);
 #endif
@@ -262,6 +312,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 {
     struct fuse_entry_param e;
     yfs_client::status ret;
+    // uint64_t b = rdtsc_beg();
     if( (ret = fuseserver_createhelper( parent, name, mode, &e, extent_protocol::T_FILE)) == yfs_client::OK ) {
         fuse_reply_create(req, &e, fi);
         printf("OK: create returns.\n");
@@ -272,6 +323,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
             fuse_reply_err(req, ENOENT);
         }
     }
+    // create_time += rdtsc_end() - b;
 }
 
 void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent, 
@@ -304,6 +356,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
     e.generation = 0;
     bool found = false;
 
+    // uint64_t b = rdtsc_beg();
      yfs_client::inum ino;
      yfs->lookup(parent, name, found, ino);
 
@@ -314,7 +367,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
     } else {
         fuse_reply_err(req, ENOENT);
     }
-
+    // lookup_time += rdtsc_end() - b;
 }
 
 
@@ -439,6 +492,7 @@ void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
     int r;
+    // uint64_t b = rdtsc_beg();
     if ((r = yfs->unlink(parent, name)) == yfs_client::OK) {
         fuse_reply_err(req, 0);
     } else {
@@ -448,6 +502,7 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
             fuse_reply_err(req, ENOTEMPTY);
         }
     }
+    // unlink_time += rdtsc_end() - b;
 }
 
 void
@@ -542,13 +597,8 @@ main(int argc, char *argv[])
     fuseserver_oper.setattr    = fuseserver_setattr;
     fuseserver_oper.unlink     = fuseserver_unlink;
     fuseserver_oper.mkdir      = fuseserver_mkdir;
-    /** Your code here for Lab.
-     * you may want to add
-     * routines here to implement symbolic link,
-     * rmdir, etc.
-     * */
-    fuseserver_oper.symlink = fuseserver_symlink;
-    fuseserver_oper.readlink = fuseserver_readlink;
+    fuseserver_oper.symlink    = fuseserver_symlink;
+    fuseserver_oper.readlink   = fuseserver_readlink;
 
     const char *fuse_argv[20];
     int fuse_argc = 0;
@@ -565,7 +615,7 @@ main(int argc, char *argv[])
     //fuse_argv[fuse_argc++] = "allow_other";
 
     fuse_argv[fuse_argc++] = mountpoint;
-    fuse_argv[fuse_argc++] = "-d";
+    // fuse_argv[fuse_argc++] = "-d";
 
     fuse_args args = FUSE_ARGS_INIT( fuse_argc, (char **) fuse_argv );
     int foreground;
@@ -602,6 +652,10 @@ main(int argc, char *argv[])
     fuse_session_add_chan(se, ch);
     // err = fuse_session_loop_mt(se);   // FK: wheelfs does this; why?
     err = fuse_session_loop(se);
+
+    // printf("CREATE: %" PRIu64 " WRITE: %" PRIu64
+    //         " UNLINK: %" PRIu64 " LOOKUP: %" PRIu64 "\n",
+    //         create_time, write_time, unlink_time, lookup_time);
 
     fuse_session_destroy(se);
     close(fd);

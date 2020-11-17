@@ -51,10 +51,10 @@ yfs_client::isfile(inum inum)
     }
 
     if (a.type == extent_protocol::T_FILE) {
-        printf("isfile: %lld is a file\n", inum);
+        // printf("isfile: %lld is a file\n", inum);
         return true;
     } 
-    printf("isfile: %lld is a dir\n", inum);
+    // printf("isfile: %lld is a dir\n", inum);
     return false;
 }
 /** Your code here for Lab...
@@ -74,7 +74,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
 {
     int r = OK;
 
-    printf("getfile %016llx\n", inum);
+    // printf("getfile %016llx\n", inum);
     extent_protocol::attr a;
     if (ec->getattr(inum, a) != extent_protocol::OK) {
         r = IOERR;
@@ -85,7 +85,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
     fin.mtime = a.mtime;
     fin.ctime = a.ctime;
     fin.size = a.size;
-    printf("getfile %016llx -> sz %llu\n", inum, fin.size);
+    // printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
 release:
     return r;
@@ -96,7 +96,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 {
     int r = OK;
 
-    printf("getdir %016llx\n", inum);
+    // printf("getdir %016llx\n", inum);
     extent_protocol::attr a;
     if (ec->getattr(inum, a) != extent_protocol::OK) {
         r = IOERR;
@@ -126,12 +126,7 @@ yfs_client::setattr(inum ino, size_t size)
     int r = OK;
     size_t n;
     std::string buf;
-
-    /*
-     * your code goes here.
-     * note: get the content of inode ino, and modify its content
-     * according to the size (<, =, or >) content length.
-     */
+    // 
     if (ec->get(ino, buf) != extent_protocol::OK) {
         r = IOERR;
         goto release;
@@ -183,11 +178,16 @@ int yfs_client::mk(inum parent, const char *name, mode_t mode,
     ino = eid;
     name_len = strlen(name);
     rec_len = ALIGN(8 + name_len);
-    buf += std::string((char *) &ino, 4);
-    buf += std::string((char *) &rec_len, 2);
-    buf += std::string((char *) &name_len, 2);
-    buf += std::string(name);
-    buf += std::string(rec_len - name_len - 8, '\0');
+    // buf += std::string((char *) &ino, 4);
+    // buf += std::string((char *) &rec_len, 2);
+    // buf += std::string((char *) &name_len, 2);
+    // buf += std::string(name);
+    // buf += std::string(rec_len - name_len - 8, '\0');
+    buf.append((char *) &ino, 4);
+    buf.append((char *) &rec_len, 2);
+    buf.append((char *) &name_len, 2);
+    buf.append(name);
+    buf.append(rec_len - name_len - 8, '\0');
     if (ec->put(parent, buf) != extent_protocol::OK) {
         ec->remove(eid);
         r = IOERR;
@@ -216,19 +216,32 @@ int
 yfs_client::lookup(inum parent, const char *name, bool &found, inum &ino_out)
 {
     int r = OK;
-    std::list<dirent> list;
-    std::list<dirent>::iterator itr;
+    const char *ptr;
+    uint32_t ino;
+    uint16_t rec_len, name_len;
+    std::string buf;
+    size_t left;
 
-    if ((r = readdir(parent, list)) != OK)
+    if (ec->get(parent, buf) != extent_protocol::OK) {
+        r = IOERR;
         goto release;
+    }
 
     found = false;
-    for (itr = list.begin(); itr != list.end(); ++itr)
-        if (itr->name.compare(name) == 0) {
+    left = buf.size();
+    ptr = buf.data();
+    while (left > 0) {
+        memcpy(&ino, ptr, 4);
+        memcpy(&rec_len, ptr + 4, 2);
+        memcpy(&name_len, ptr + 6, 2);
+        if (std::string(ptr + 8, name_len).compare(name) == 0) {
             found = true;
-            ino_out = itr->inum;
+            ino_out = ino;
             break;
         }
+        ptr += rec_len;
+        left -= rec_len;
+    }
 
 release:
     return r;
@@ -303,7 +316,8 @@ yfs_client::write(inum ino, size_t size, off_t off, const char *data,
                 buf.substr(off + size, n - off - size);
         bytes_written = size;
     } else {
-        buf = buf + std::string(off - n, '\0') + std::string(data, size);
+        buf.append(off - n, '\0');
+        buf.append(data, size);
         bytes_written = off - n + size;
     }
 
