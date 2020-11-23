@@ -5,6 +5,7 @@
 
 #include <string>
 #include <map>
+#include <pthread.h>
 #include "extent_protocol.h"
 #include "inode_manager.h"
 
@@ -18,6 +19,7 @@ class extent_server {
   std::map <extent_protocol::extentid_t, extent_t> extents;
 #endif
   inode_manager *im;
+  pthread_mutex_t *mutex;
 
  public:
   extent_server();
