@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include "extent_client.h"
 #include "lock_protocol.h"
 #include "lock_client.h"
@@ -12,6 +13,11 @@
 
 
 class ydb_server_occ: public ydb_server {
+private:
+    ydb_protocol::transaction_id next_id;
+    std::set<ydb_protocol::transaction_id> active_ids;
+    std::map<ydb_protocol::transaction_id, std::map<std::string, std::string>> read_set;
+    std::map<ydb_protocol::transaction_id, std::map<std::string, std::string>> write_set;
 public:
 	ydb_server_occ(std::string, std::string);
 	~ydb_server_occ();
