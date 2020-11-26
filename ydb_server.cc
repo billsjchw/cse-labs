@@ -1,7 +1,8 @@
-#include "ydb_server.h"
-#include "extent_client.h"
 #include <string>
 #include <utility>
+#include "ydb_server.h"
+#include "extent_client.h"
+#include "extent_protocol.h"
 
 //#define DEBUG 1
 
@@ -18,7 +19,7 @@ ydb_server::ydb_server(std::string extent_dst, std::string lock_dst) {
 
 	long starttime = timestamp();
 	
-	for(int i = EID_MIN; i < EID_MAX; i++) {    // for simplicity, just pre alloc all the needed inodes
+	for (extent_protocol::extentid_t i = EID_MIN; i < EID_MAX; i++) {    // for simplicity, just pre alloc all the needed inodes
 		extent_protocol::extentid_t id;
 		ec->create(extent_protocol::T_FILE, id);
 	}
