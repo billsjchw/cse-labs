@@ -97,6 +97,7 @@ block_manager::write_block(uint32_t id, const char *buf)
 inode_manager::inode_manager()
 {
   bm = new block_manager();
+  free_inum_min = 1;
   uint32_t root_dir = alloc_inode(extent_protocol::T_DIR);
   if (root_dir != 1) {
     printf("\tim: error! alloc first inode %d, should be 1\n", root_dir);
@@ -109,23 +110,27 @@ inode_manager::inode_manager()
 uint32_t
 inode_manager::alloc_inode(uint32_t type)
 {
-  uint32_t inum, ret;
+  uint32_t ret;
   inode_t *ino;
 
-  ret = 0;
-  for (inum = 1; inum < INODE_NUM && ret == 0; ++inum) {
-    ino = get_inode(inum);
-    if (ino == NULL) {
-      ino = (inode_t *) malloc(sizeof(inode_t));
-      ino->type = type;
-      ino->size = 0;
-      ino->atime = ino->mtime = ino->ctime = (unsigned) time(NULL);
-      put_inode(inum, ino);
-      ret = inum;
-    }
+  if (free_inum_min == INODE_NUM)
+    return 0;
+
+  ret = free_inum_min;
+  ino = (inode_t *) malloc(sizeof(inode_t));
+  ino->type = type;
+  ino->size = 0;
+  ino->atime = ino->mtime = ino->ctime = (unsigned) time(NULL);
+  put_inode(free_inum_min, ino);
+  free(ino);
+  
+  for (++free_inum_min; free_inum_min < INODE_NUM; ++free_inum_min) {
+    ino = get_inode(free_inum_min);
+    if (ino == NULL)
+      break;
     free(ino);
   }
-  
+
   return ret;
 }
 
@@ -142,6 +147,9 @@ inode_manager::free_inode(uint32_t inum)
   put_inode(inum, ino);
 
   free(ino);
+
+  if (inum < free_inum_min)
+    free_inum_min = inum;
 
   return;
 }
