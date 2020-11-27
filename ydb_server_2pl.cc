@@ -19,26 +19,33 @@ ydb_protocol::status ydb_server_2pl::transaction_begin(int, ydb_protocol::transa
     lc->acquire(EID_MAX);
 
     out_id = next_id++;
+
+    lc->acquire(EID_MAX + out_id);
+
     active_ids.insert(out_id);
 
     lc->release(EID_MAX);
+    lc->release(EID_MAX + out_id);
     return ret;
 }
 
 ydb_protocol::status ydb_server_2pl::transaction_commit(ydb_protocol::transaction_id id, int &) {
 	ydb_protocol::status ret = ydb_protocol::OK;
     
+    if (id <= 0)
+        return ydb_protocol::TRANSIDINV;
+
     lc->acquire(EID_MAX);
+    lc->acquire(EID_MAX + id);
 
     if (!active_ids.count(id)) {
-        lc->release(EID_MAX);
-        return ydb_protocol::TRANSIDINV;
+        ret = ydb_protocol::TRANSIDINV;
+        goto release;
     }
-
-    lc->acquire(EID_MAX + id);
 
     clear(id);
 
+release:
     lc->release(EID_MAX);
     lc->release(EID_MAX + id);
 	return ret;
@@ -47,14 +54,16 @@ ydb_protocol::status ydb_server_2pl::transaction_commit(ydb_protocol::transactio
 ydb_protocol::status ydb_server_2pl::transaction_abort(ydb_protocol::transaction_id id, int &) {
     ydb_protocol::status ret = ydb_protocol::OK;
     
+    if (id <= 0)
+        return ydb_protocol::TRANSIDINV;
+
     lc->acquire(EID_MAX);
+    lc->acquire(EID_MAX + id);
 
     if (!active_ids.count(id)) {
         ret = ydb_protocol::TRANSIDINV;
         goto release;
     }
-
-    lc->acquire(EID_MAX + id);
 
     rollback(id);
     clear(id);
@@ -71,14 +80,16 @@ ydb_protocol::status ydb_server_2pl::get(ydb_protocol::transaction_id id, std::s
     std::map<std::string, std::string> kvmap;
     ydb_protocol::status ret = ydb_protocol::OK;
 
+    if (id <= 0)
+        return ydb_protocol::TRANSIDINV;
+
     lc->acquire(EID_MAX);
+    lc->acquire(EID_MAX + id);
 
     if (!active_ids.count(id)) {
-        lc->release(EID_MAX);
-        return ydb_protocol::TRANSIDINV;
+        ret = ydb_protocol::TRANSIDINV;
+        goto release;
     }
-
-    lc->acquire(EID_MAX + id);
 
     if (!lock_set[id].count(eid)) {
         acquiring[id] = eid;
@@ -115,14 +126,16 @@ ydb_protocol::status ydb_server_2pl::set(ydb_protocol::transaction_id id, std::s
     std::map<std::string, std::string> kvmap;
     ydb_protocol::status ret = ydb_protocol::OK;
 
+    if (id <= 0)
+        return ydb_protocol::TRANSIDINV;
+
     lc->acquire(EID_MAX);
+    lc->acquire(EID_MAX + id);
 
     if (!active_ids.count(id)) {
-        lc->release(EID_MAX);
-        return ydb_protocol::TRANSIDINV;
+        ret = ydb_protocol::TRANSIDINV;
+        goto release;
     }
-
-    lc->acquire(EID_MAX + id);
 
     if (!lock_set[id].count(eid)) {
         acquiring[id] = eid;
@@ -164,14 +177,16 @@ ydb_protocol::status ydb_server_2pl::del(ydb_protocol::transaction_id id, std::s
     std::map<std::string, std::string> kvmap;
     ydb_protocol::status ret = ydb_protocol::OK;
 
+    if (id <= 0)
+        return ydb_protocol::TRANSIDINV;
+
     lc->acquire(EID_MAX);
+    lc->acquire(EID_MAX + id);
 
     if (!active_ids.count(id)) {
-        lc->release(EID_MAX);
-        return ydb_protocol::TRANSIDINV;
+        ret = ydb_protocol::TRANSIDINV;
+        goto release;
     }
-
-    lc->acquire(EID_MAX + id);
 
     if (!lock_set[id].count(eid)) {
         acquiring[id] = eid;
