@@ -20,7 +20,6 @@ protected:
 	lock_client *lc;
     static const extent_protocol::extentid_t EID_MIN = 2;
     static const extent_protocol::extentid_t EID_MAX = 1024;
-    static const std::size_t KV_LEN_MAX = 32;
 public:
 	ydb_server(std::string, std::string);
 	virtual ~ydb_server();
