@@ -5,6 +5,8 @@
 #define lock_client_cache_h
 
 #include <string>
+#include <map>
+#include <pthread.h>
 #include "lock_protocol.h"
 #include "rpc.h"
 #include "lock_client.h"
@@ -22,10 +24,17 @@ class lock_release_user {
 
 class lock_client_cache : public lock_client {
  private:
+  enum lock_state { NONE, FREE, LOCKED, ACQUIRING, RELEASING };
+ private:
   class lock_release_user *lu;
   int rlock_port;
   std::string hostname;
   std::string id;
+  pthread_mutex_t *mutex;
+  std::map<lock_protocol::lockid_t, lock_state> state;
+  std::map<lock_protocol::lockid_t, bool> revoke;
+  std::map<lock_protocol::lockid_t, int> waiting;
+  std::map<lock_protocol::lockid_t, pthread_cond_t *> cv;
  public:
   static int last_port;
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);

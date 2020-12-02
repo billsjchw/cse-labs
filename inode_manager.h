@@ -79,6 +79,7 @@ typedef struct inode {
 class inode_manager {
  private:
   block_manager *bm;
+  uint32_t free_inum_min;
   struct inode* get_inode(uint32_t inum);
   void put_inode(uint32_t inum, struct inode *ino);
 
