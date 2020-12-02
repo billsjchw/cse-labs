@@ -19,23 +19,19 @@ class extent_server {
   std::map <extent_protocol::extentid_t, extent_t> extents;
 #endif
   inode_manager *im;
-  pthread_mutex_t *mutex;
-
+  pthread_mutex_t mutex;
+  std::map<extent_protocol::extentid_t, std::map<std::string, unsigned>> caching;
+  std::map<extent_protocol::extentid_t, unsigned> version;
  public:
   extent_server();
-
-  int create(uint32_t type, extent_protocol::extentid_t &id);
-  int put(extent_protocol::extentid_t id, std::string, int &);
-  int get(extent_protocol::extentid_t id, std::string &);
-  int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);
-  int remove(extent_protocol::extentid_t id, int &);
+  int create(std::string id, uint32_t type, extent_protocol::extentid_t &eid);
+  int put(std::string id, extent_protocol::extentid_t eid, std::string, int &);
+  int get(std::string id, extent_protocol::extentid_t eid, std::string &);
+  int getattr(std::string id, extent_protocol::extentid_t eid, extent_protocol::attr &);
+  int remove(std::string id, extent_protocol::extentid_t eid, int &);
+ private:
+  void invalidate(extent_protocol::extentid_t eid, unsigned new_version,
+                  const std::map<std::string, unsigned> &to_invs);
 };
 
-#endif 
-
-
-
-
-
-
-
+#endif

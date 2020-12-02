@@ -33,6 +33,15 @@ class extent_protocol {
   };
 };
 
+class iextent_protocol {
+public:
+  enum xxstatus { OK, RPCERR };
+  typedef int status;
+  enum rpc_numbers {
+    invalidate = 0x5001
+  };
+};
+
 inline unmarshall &
 operator>>(unmarshall &u, extent_protocol::attr &a)
 {

@@ -7,6 +7,8 @@
 *.t
 *.tt
 *.log
+foo*
+tmp*
 yfs1/
 yfs2/
 .vscode/
