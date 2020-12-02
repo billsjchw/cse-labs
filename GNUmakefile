@@ -1,4 +1,4 @@
-LAB=3
+LAB=4
 SOL=0
 RPC=./rpc
 LAB1GE=$(shell expr $(LAB) \>\= 1)
@@ -44,6 +44,7 @@ lab:  lab$(LAB)
 lab1: part1_tester yfs_client
 lab2: lock_server lock_tester lock_demo yfs_client extent_server test-lab2-part1-g test-lab2-part2-a test-lab2-part2-b test-lab2-part3-a test-lab2-part3-b
 lab3: lock_server extent_server ydb_server test-lab3-durability test-lab3-part2-3-basic test-lab3-part2-a test-lab3-part2-b test-lab3-part3-a test-lab3-part3-b test-lab3-part2-3-complex  yfs_client test-lab2-part1-g test-lab2-part2-a test-lab2-part2-b test-lab2-part3-a test-lab2-part3-b
+lab4: lock_server lock_tester lock_demo yfs_client extent_server test-lab2-part1-g test-lab2-part2-a test-lab2-part2-b test-lab2-part3-a test-lab2-part3-b test-lab4-fxmark
 
 hfiles1=rpc/fifo.h rpc/connection.h rpc/rpc.h rpc/marshall.h rpc/method_thread.h\
 	rpc/thr_pool.h rpc/pollmgr.h rpc/jsl_log.h rpc/slock.h rpc/rpctest.cc\
@@ -115,6 +116,8 @@ test-lab3-part3-b: $(patsubst %.cc,%.o,$(test-lab3-part3-b)) rpc/$(RPCLIB)
 test-lab3-part2-3-complex=test-lab3-part2-3-complex.cc ydb_client.cc
 test-lab3-part2-3-complex: $(patsubst %.cc,%.o,$(test-lab3-part2-3-complex)) rpc/$(RPCLIB)
 
+test-lab4-fxmark=test-lab4-fxmark.c
+test-lab4-fxmark: $(patsubst %.cc,%.o,$(test-lab4-fxmark)) rpc/$(RPCLIB)
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -128,7 +131,7 @@ fuse.o: fuse.cc
 -include *.d
 -include rpc/*.d
 
-clean_files=rpc/*.a rpc/rpctest rpc/*.o rpc/*.d *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest ydb_server test-lab2-part1-a test-lab2-part1-b test-lab2-part1-c test-lab2-part1-g test-lab2-part2-a test-lab2-part2-b test-lab2-part3-a test-lab2-part3-b part1_tester demo_client demo_server test-lab3-durability test-lab3-part2-3-basic test-lab3-part2-a test-lab3-part2-b test-lab3-part3-a test-lab3-part3-b test-lab3-part2-3-complex
+clean_files=rpc/*.a rpc/rpctest rpc/*.o rpc/*.d *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest ydb_server test-lab2-part1-a test-lab2-part1-b test-lab2-part1-c test-lab2-part1-g test-lab2-part2-a test-lab2-part2-b test-lab2-part3-a test-lab2-part3-b part1_tester demo_client demo_server test-lab4-fxmark
 .PHONY: clean handin
 clean: 
 	rm $(clean_files) -rf 
@@ -138,7 +141,7 @@ handin_file=lab$(LAB).tgz
 labdir=$(shell basename $(PWD))
 handin: 
 	@bash -c "cd ../; tar -X <(tr ' ' '\n' < <(echo '$(handin_ignore)')) -czvf $(handin_file) $(labdir); mv $(handin_file) $(labdir); cd $(labdir)"
-	@echo Please modify lab3.tgz to lab3_[your student id].tgz and upload it to ftp://huangzheng:public@public.sjtu.edu.cn/upload/cse/lab3/
+	@echo Please modify lab4.tgz to lab4_[your student id].tgz and upload it to ftp://maxullee:public@public.sjtu.edu.cn/upload/cse/lab4/
 	@echo Thanks!
 
 rpcdemo: demo_server demo_client
