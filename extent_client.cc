@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-int extent_client::last_port = 0;
+int extent_client::last_port = 12345;
 
 extent_client::extent_client(std::string dst): mutex(PTHREAD_MUTEX_INITIALIZER)
 {
@@ -24,7 +24,7 @@ extent_client::extent_client(std::string dst): mutex(PTHREAD_MUTEX_INITIALIZER)
     printf("extent_client: bind failed\n");
   }
   srand(time(NULL) ^ last_port);
-  iextent_port = ((rand() % 32000) | (0x1 << 10));
+  iextent_port = ((rand() % 16000) | (0x1 << 10));
   host << "127.0.0.1:" << iextent_port;
   id = host.str();
   last_port = iextent_port;
