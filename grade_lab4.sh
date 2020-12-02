@@ -3,6 +3,7 @@
 ./test-lab4-fxmark ./yfs1 | tee /dev/tty | grep -q 'Pass'
 if [ $? -ne 0 ]; then
 	echo "Failed test-lab4-fxmark"
+	exit
 else
 	echo "Passed test-lab4-fxmark"
 fi
