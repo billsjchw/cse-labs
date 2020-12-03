@@ -1,6 +1,9 @@
 *
 !*.*
 !*/
+!GNUmakefile
+!LICENSE
+!Makefile
 *.o
 *.d
 *.a
