@@ -35,7 +35,7 @@ extent_protocol::status extent_client::create(uint32_t type, extent_protocol::ex
   extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
-  printf("CREATE\n");
+  // printf("CREATE\n");
 
   pthread_mutex_lock(&mutex);
 
@@ -69,7 +69,7 @@ extent_protocol::status extent_client::get(extent_protocol::extentid_t eid, std:
   extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
-  printf("GET %llu\n", eid);
+  // printf("GET %llu\n", eid);
 
   pthread_mutex_lock(&mutex);
 
@@ -102,7 +102,7 @@ extent_protocol::status extent_client::getattr(extent_protocol::extentid_t eid, 
   extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
-  printf("GETATTR %llu\n", eid);
+  // printf("GETATTR %llu\n", eid);
 
   pthread_mutex_lock(&mutex);
 
@@ -136,7 +136,7 @@ extent_protocol::status extent_client::put(extent_protocol::extentid_t eid, std:
   extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
-  printf("PUT %llu\n", eid);
+  // printf("PUT %llu\n", eid);
 
   pthread_mutex_lock(&mutex);
 
@@ -172,7 +172,7 @@ extent_protocol::status extent_client::remove(extent_protocol::extentid_t eid) {
   extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
-  printf("REMOVE %llu\n", eid);
+  // printf("REMOVE %llu\n", eid);
 
   pthread_mutex_lock(&mutex);
 
@@ -203,7 +203,7 @@ release:
 rextent_protocol::status extent_client::revoke_handler(extent_protocol::extentid_t eid, extent_protocol::extent &e) {
   rextent_protocol::status ret = rextent_protocol::OK;
 
-  printf("REVOKE_HANDLER %llu\n", eid);
+  // printf("REVOKE_HANDLER %llu\n", eid);
 
   pthread_mutex_lock(&mutex);
 

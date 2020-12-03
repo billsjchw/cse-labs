@@ -53,10 +53,10 @@ yfs_client::isfile(inum inum)
     lc->release(inum);
 
     if (a.type == extent_protocol::T_FILE) {
-        printf("isfile: %lld is a file\n", inum);
+        // printf("isfile: %lld is a file\n", inum);
         return true;
     } 
-    printf("isfile: %lld is a dir\n", inum);
+    // printf("isfile: %lld is a dir\n", inum);
     return false;
 }
 
@@ -113,7 +113,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
 {
     int r = OK;
 
-    printf("getfile %016llx\n", inum);
+    // printf("getfile %016llx\n", inum);
     extent_protocol::attr a;
 
     lc->acquire(inum);
@@ -124,7 +124,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
     fin.mtime = a.mtime;
     fin.ctime = a.ctime;
     fin.size = a.size;
-    printf("getfile %016llx -> sz %llu\n", inum, fin.size);
+    // printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
 release:
     lc->release(inum);
@@ -136,7 +136,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 {
     int r = OK;
 
-    printf("getdir %016llx\n", inum);
+    // printf("getdir %016llx\n", inum);
     extent_protocol::attr a;
 
     lc->acquire(inum);
