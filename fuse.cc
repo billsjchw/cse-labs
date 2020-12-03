@@ -566,7 +566,7 @@ main(int argc, char *argv[])
     //fuse_argv[fuse_argc++] = "allow_other";
 
     fuse_argv[fuse_argc++] = mountpoint;
-    // fuse_argv[fuse_argc++] = "-d";
+    fuse_argv[fuse_argc++] = "-d";
 
     fuse_args args = FUSE_ARGS_INIT( fuse_argc, (char **) fuse_argv );
     int foreground;
