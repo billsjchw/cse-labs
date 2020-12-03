@@ -13,97 +13,190 @@
 
 int extent_client::last_port = 12345;
 
-extent_client::extent_client(std::string dst): mutex(PTHREAD_MUTEX_INITIALIZER)
-{
+extent_client::extent_client(std::string dst): mutex(PTHREAD_MUTEX_INITIALIZER){
   sockaddr_in dstsock;
   std::ostringstream host;
-  rpcs *iesrpc = NULL;
+  rpcs *resrpc = NULL;
   make_sockaddr(dst.c_str(), &dstsock);
   cl = new rpcc(dstsock);
-  if (cl->bind() != 0) {
+  if (cl->bind() != 0)
     printf("extent_client: bind failed\n");
-  }
   srand(time(NULL) ^ last_port);
-  iextent_port = ((rand() % 16000) | (0x1 << 10));
-  host << "127.0.0.1:" << iextent_port;
+  rextent_port = ((rand() % 32000) | (0x1 << 10));
+  host << "127.0.0.1:" << rextent_port;
   id = host.str();
-  last_port = iextent_port;
-  iesrpc = new rpcs(iextent_port);
-  iesrpc->reg(iextent_protocol::invalidate, this, &extent_client::invalidate_handler);
+  last_port = rextent_port;
+  resrpc = new rpcs(rextent_port);
+  resrpc->reg(rextent_protocol::revoke, this, &extent_client::revoke_handler);
 }
 
-extent_protocol::status
-extent_client::create(uint32_t type, extent_protocol::extentid_t &eid)
-{
+extent_protocol::status extent_client::create(uint32_t type, extent_protocol::extentid_t &eid) {
   extent_protocol::status ret = extent_protocol::OK;
-  
-  ret = cl->call(extent_protocol::create, id, type, eid);
+  extent_protocol::extent e;
 
-  return ret;
-}
+  printf("CREATE\n");
 
-extent_protocol::status
-extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
-{
-  extent_protocol::status ret = extent_protocol::OK;
-  unsigned new_version = 0;
-  
   pthread_mutex_lock(&mutex);
 
-  if (cache.count(eid) && cache[eid].first == version[eid]) {
-    buf = cache[eid].second;
-    goto release;
+  if (!free_eids.empty()) {
+    eid = *free_eids.begin();
+    free_eids.erase(free_eids.begin());
+  } else {
+    if (cl->call(extent_protocol::acquire, id, (extent_protocol::extentid_t) 0, e) != extent_protocol::OK) {
+      ret = extent_protocol::RPCERR;
+      goto release;
+    }
+    eid = e.eid;
   }
-  new_version = version[eid];
 
-  pthread_mutex_unlock(&mutex);
-  ret = cl->call(extent_protocol::get, id, eid, buf);
-  pthread_mutex_lock(&mutex);
-  if (ret == extent_protocol::OK)
-    cache[eid] = std::make_pair(new_version, buf);
+  cache[eid].eid = eid;
+  cache[eid].attr.type = type;
+  cache[eid].attr.size = 0;
+  cache[eid].attr.atime = cache[eid].attr.ctime = cache[eid].attr.mtime = (unsigned) time(NULL);
+  cache[eid].data = "";
 
 release:
   pthread_mutex_unlock(&mutex);
   return ret;
 }
 
-extent_protocol::status
-extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &attr)
-{
+extent_protocol::status extent_client::get(extent_protocol::extentid_t eid, std::string &buf) {
   extent_protocol::status ret = extent_protocol::OK;
-  
-  ret = cl->call(extent_protocol::getattr, id, eid, attr);
+  extent_protocol::extent e;
 
-  return ret;
-}
+  printf("GET %llu\n", eid);
 
-extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, std::string buf)
-{
-  extent_protocol::status ret = extent_protocol::OK;
-  int dummy = 0;
-
-  ret = cl->call(extent_protocol::put, id, eid, buf, dummy);
-
-  return ret;
-}
-
-extent_protocol::status
-extent_client::remove(extent_protocol::extentid_t eid)
-{
-  extent_protocol::status ret = extent_protocol::OK;
-  int dummy = 0;
-  
-  ret = cl->call(extent_protocol::remove, id, eid, dummy);
-
-  return ret;
-}
-
-iextent_protocol::status extent_client::invalidate_handler(extent_protocol::extentid_t eid, int &) {
   pthread_mutex_lock(&mutex);
 
-  ++version[eid];
+  if (!cache.count(eid)) {
+    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
+      ret = extent_protocol::RPCERR;
+      goto release;
+    }
+    cache[eid] = e;
+    if (e.attr.type == 0)
+      free_eids.insert(eid);
+  }
 
+  if (cache[eid].attr.type == 0)
+    ret = extent_protocol::NOENT;
+
+  buf = cache[eid].data;
+  cache[eid].attr.atime = (unsigned) time(NULL);
+
+release:
   pthread_mutex_unlock(&mutex);
-  return iextent_protocol::OK;
+  return ret;
+}
+
+extent_protocol::status extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a) {
+  extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::extent e;
+
+  printf("GETATTR %llu\n", eid);
+
+  pthread_mutex_lock(&mutex);
+
+  if (!cache.count(eid)) {
+    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
+      ret = extent_protocol::RPCERR;
+      goto release;
+    }
+    cache[eid] = e;
+    if (e.attr.type == 0)
+      free_eids.insert(eid);
+  }
+
+  if (cache[eid].attr.type == 0) {
+    ret = extent_protocol::NOENT;
+    goto release;
+  }
+
+  a = cache[eid].attr;
+
+release:
+  pthread_mutex_unlock(&mutex);
+  return ret;
+}
+
+extent_protocol::status extent_client::put(extent_protocol::extentid_t eid, std::string buf) {
+  extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::extent e;
+
+  printf("PUT %llu\n", eid);
+
+  pthread_mutex_lock(&mutex);
+
+  if (!cache.count(eid)) {
+    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
+      ret = extent_protocol::RPCERR;
+      goto release;
+    }
+    cache[eid] = e;
+    if (e.attr.type == 0)
+      free_eids.insert(eid);
+  }
+
+  if (cache[eid].attr.type == 0) {
+    ret = extent_protocol::NOENT;
+    goto release;
+  }
+
+  cache[eid].data = buf;
+  cache[eid].attr.size = buf.size();
+  cache[eid].attr.atime = cache[eid].attr.ctime = cache[eid].attr.mtime = (unsigned) time(NULL);
+
+release:
+  pthread_mutex_unlock(&mutex);
+  return ret;
+}
+
+extent_protocol::status extent_client::remove(extent_protocol::extentid_t eid) {
+  extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::extent e;
+
+  printf("REMOVE %llu\n", eid);
+
+  pthread_mutex_lock(&mutex);
+
+  if (!cache.count(eid)) {
+    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
+      ret = extent_protocol::RPCERR;
+      goto release;
+    }
+    cache[eid] = e;
+    if (e.attr.type == 0)
+      free_eids.insert(eid);
+  }
+
+  cache[eid].attr.type = 0;
+  cache[eid].attr.size = 0;
+  cache[eid].data = "";
+  
+  free_eids.insert(eid);
+
+release:
+  pthread_mutex_unlock(&mutex);
+  return ret;
+}
+
+rextent_protocol::status extent_client::revoke_handler(extent_protocol::extentid_t eid, extent_protocol::extent &e) {
+  rextent_protocol::status ret = rextent_protocol::OK;
+
+  printf("REVOKE_HANDLER %llu\n", eid);
+
+  pthread_mutex_lock(&mutex);
+
+  if (!cache.count(eid)) {
+    ret = rextent_protocol::NOENT;
+    goto release;
+  }
+
+  e = cache[eid];
+  cache.erase(eid);
+  free_eids.erase(eid);
+
+release:
+  pthread_mutex_unlock(&mutex);
+  return ret;
 }

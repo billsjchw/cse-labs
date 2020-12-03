@@ -10,12 +10,8 @@ class extent_protocol {
   typedef int status;
   typedef unsigned long long extentid_t;
   enum xxstatus { OK, RPCERR, NOENT, IOERR };
-  enum rpc_numbers {
-    put = 0x6001,
-    get,
-    getattr,
-    remove,
-    create
+  enum rpc_number {
+    acquire = 0x6001,
   };
 
   enum types {
@@ -31,14 +27,20 @@ class extent_protocol {
     unsigned int ctime;
     unsigned int size;
   };
+
+  struct extent {
+    extentid_t eid;
+    struct attr attr;
+    std::string data;
+  };
 };
 
-class iextent_protocol {
+class rextent_protocol {
 public:
-  enum xxstatus { OK, RPCERR };
+  enum xxstatus { OK, NOENT };
   typedef int status;
   enum rpc_numbers {
-    invalidate = 0x5001
+    revoke = 0x5001
   };
 };
 
@@ -61,6 +63,24 @@ operator<<(marshall &m, extent_protocol::attr a)
   m << a.mtime;
   m << a.ctime;
   m << a.size;
+  return m;
+}
+
+inline unmarshall &
+operator>>(unmarshall &u, extent_protocol::extent &e)
+{
+  u >> e.eid;
+  u >> e.attr;
+  u >> e.data;
+  return u;
+}
+
+inline marshall &
+operator<<(marshall &m, extent_protocol::extent e)
+{
+  m << e.eid;
+  m << e.attr;
+  m << e.data;
   return m;
 }
 
