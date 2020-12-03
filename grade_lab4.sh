@@ -8,6 +8,8 @@ else
 	echo "Passed test-lab4-fxmark"
 fi
 
+### restart
+./stop.sh
 ./start.sh
 
 works=$(./fxmark/bin/fxmark --type=YFS --root=./yfs1 --ncore=1 --duration=1 | tee /dev/tty | sed -n '2p' | awk '{print $3}')
