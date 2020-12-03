@@ -32,6 +32,7 @@ extent_client::extent_client(std::string dst): mutex(PTHREAD_MUTEX_INITIALIZER){
 
 extent_protocol::status extent_client::create(uint32_t type, extent_protocol::extentid_t &eid) {
   extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
   printf("CREATE\n");
@@ -42,8 +43,11 @@ extent_protocol::status extent_client::create(uint32_t type, extent_protocol::ex
     eid = *free_eids.begin();
     free_eids.erase(free_eids.begin());
   } else {
-    if (cl->call(extent_protocol::acquire, id, (extent_protocol::extentid_t) 0, e) != extent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    pthread_mutex_unlock(&mutex);
+    server_ret = cl->call(extent_protocol::acquire, id, (extent_protocol::extentid_t) 0, e);
+    pthread_mutex_lock(&mutex);
+    if (server_ret != extent_protocol::OK || e.eid == 0) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
     eid = e.eid;
@@ -62,6 +66,7 @@ release:
 
 extent_protocol::status extent_client::get(extent_protocol::extentid_t eid, std::string &buf) {
   extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
   printf("GET %llu\n", eid);
@@ -69,8 +74,11 @@ extent_protocol::status extent_client::get(extent_protocol::extentid_t eid, std:
   pthread_mutex_lock(&mutex);
 
   if (!cache.count(eid)) {
-    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    pthread_mutex_unlock(&mutex);
+    server_ret = cl->call(extent_protocol::acquire, id, eid, e);
+    pthread_mutex_lock(&mutex);
+    if (server_ret != extent_protocol::OK) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
     cache[eid] = e;
@@ -91,6 +99,7 @@ release:
 
 extent_protocol::status extent_client::getattr(extent_protocol::extentid_t eid, extent_protocol::attr &a) {
   extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
   printf("GETATTR %llu\n", eid);
@@ -98,8 +107,11 @@ extent_protocol::status extent_client::getattr(extent_protocol::extentid_t eid, 
   pthread_mutex_lock(&mutex);
 
   if (!cache.count(eid)) {
-    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    pthread_mutex_unlock(&mutex);
+    server_ret = cl->call(extent_protocol::acquire, id, eid, e);
+    pthread_mutex_lock(&mutex);
+    if (server_ret != extent_protocol::OK) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
     cache[eid] = e;
@@ -121,6 +133,7 @@ release:
 
 extent_protocol::status extent_client::put(extent_protocol::extentid_t eid, std::string buf) {
   extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
   printf("PUT %llu\n", eid);
@@ -128,8 +141,11 @@ extent_protocol::status extent_client::put(extent_protocol::extentid_t eid, std:
   pthread_mutex_lock(&mutex);
 
   if (!cache.count(eid)) {
-    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    pthread_mutex_unlock(&mutex);
+    server_ret = cl->call(extent_protocol::acquire, id, eid, e);
+    pthread_mutex_lock(&mutex);
+    if (server_ret != extent_protocol::OK) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
     cache[eid] = e;
@@ -153,6 +169,7 @@ release:
 
 extent_protocol::status extent_client::remove(extent_protocol::extentid_t eid) {
   extent_protocol::status ret = extent_protocol::OK;
+  extent_protocol::status server_ret = extent_protocol::OK;
   extent_protocol::extent e;
 
   printf("REMOVE %llu\n", eid);
@@ -160,8 +177,11 @@ extent_protocol::status extent_client::remove(extent_protocol::extentid_t eid) {
   pthread_mutex_lock(&mutex);
 
   if (!cache.count(eid)) {
-    if (cl->call(extent_protocol::acquire, id, eid, e) != extent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    pthread_mutex_unlock(&mutex);
+    server_ret = cl->call(extent_protocol::acquire, id, eid, e);
+    pthread_mutex_lock(&mutex);
+    if (server_ret != extent_protocol::OK) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
     cache[eid] = e;

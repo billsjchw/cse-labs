@@ -22,6 +22,7 @@ extent_server::extent_server(): im(new inode_manager), mutex(PTHREAD_MUTEX_INITI
 extent_protocol::status extent_server::acquire(std::string cid, extent_protocol::extentid_t eid,
                                                extent_protocol::extent &e) {
   extent_protocol::status ret = extent_protocol::OK;
+  rextent_protocol::status client_ret = rextent_protocol::OK;
   char *buf = NULL;
   int size = 0;
 
@@ -42,10 +43,13 @@ extent_protocol::status extent_server::acquire(std::string cid, extent_protocol:
   }
 
   if (owner.count(eid)) {
+    pthread_mutex_unlock(&mutex);
     handle h(owner[eid]);
     rpcc *cl = h.safebind();
-    if (cl->call(rextent_protocol::revoke, eid, e) != rextent_protocol::OK) {
-      ret = extent_protocol::RPCERR;
+    client_ret = cl->call(rextent_protocol::revoke, eid, e);
+    pthread_mutex_lock(&mutex);
+    if (client_ret != rextent_protocol::OK) {
+      ret = extent_protocol::NOENT;
       goto release;
     }
   } else {
