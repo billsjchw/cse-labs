@@ -230,11 +230,11 @@ int yfs_client::mk(inum parent, const char *name, mode_t mode,
     ino = eid;
     name_len = strlen(name);
     rec_len = ALIGN(8 + name_len);
-    buf += std::string((char *) &ino, 4);
-    buf += std::string((char *) &rec_len, 2);
-    buf += std::string((char *) &name_len, 2);
-    buf += std::string(name);
-    buf += std::string(rec_len - name_len - 8, '\0');
+    buf.append((char *) &ino, 4);
+    buf.append((char *) &rec_len, 2);
+    buf.append((char *) &name_len, 2);
+    buf.append(name);
+    buf.append(rec_len - name_len - 8, '\0');
     EXT_RPC(ec->put(parent, buf));
 
     ino_out = eid;
@@ -260,21 +260,37 @@ int
 yfs_client::lookup(inum parent, const char *name, bool &found, inum &ino_out)
 {
     int r = OK;
-    std::list<dirent> list;
-    std::list<dirent>::iterator itr;
+    const char *ptr;
+    uint32_t ino;
+    uint16_t rec_len, name_len;
+    std::string buf;
+    size_t left;
 
-    if ((r = readdir(parent, list)) != OK)
+    lc->acquire(parent);
+
+    if (ec->get(parent, buf) != extent_protocol::OK) {
+        r = IOERR;
         goto release;
+    }
 
     found = false;
-    for (itr = list.begin(); itr != list.end(); ++itr)
-        if (itr->name.compare(name) == 0) {
+    left = buf.size();
+    ptr = buf.data();
+    while (left > 0) {
+        memcpy(&ino, ptr, 4);
+        memcpy(&rec_len, ptr + 4, 2);
+        memcpy(&name_len, ptr + 6, 2);
+        if (std::string(ptr + 8, name_len).compare(name) == 0) {
             found = true;
-            ino_out = itr->inum;
+            ino_out = ino;
             break;
         }
+        ptr += rec_len;
+        left -= rec_len;
+    }
 
 release:
+    lc->release(parent);
     return r;
 }
 
@@ -346,7 +362,8 @@ yfs_client::write(inum ino, size_t size, off_t off, const char *data,
                 buf.substr(off + size, n - off - size);
         bytes_written = size;
     } else {
-        buf = buf + std::string(off - n, '\0') + std::string(data, size);
+        buf.append(off - n, '\0');
+        buf.append(data, size);
         bytes_written = off - n + size;
     }
 
@@ -369,7 +386,10 @@ int yfs_client::unlink(inum parent, const char *name)
 
     lc->acquire(parent);
 
-    EXT_RPC(ec->get(parent, buf));
+    if (ec->get(parent, buf) != extent_protocol::OK) {
+        lc->release(parent);
+        return RPCERR;
+    }
 
     n = buf.size();
 
@@ -382,8 +402,7 @@ int yfs_client::unlink(inum parent, const char *name)
         memcpy(&name_len, ptr + 6, 2);
         if (std::string(ptr + 8, name_len).compare(name) == 0) {
             ino_found = ino;
-            buf = buf.substr(0, n - left) +
-                    buf.substr(n - left + rec_len, left - rec_len);
+            buf.erase(n - left, rec_len);
             break;
         }
         ptr += rec_len;

@@ -264,7 +264,7 @@ fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
     yfs_client::status ret;
     if( (ret = fuseserver_createhelper( parent, name, mode, &e, extent_protocol::T_FILE)) == yfs_client::OK ) {
         fuse_reply_create(req, &e, fi);
-        printf("OK: create returns.\n");
+        // printf("OK: create returns.\n");
     } else {
         if (ret == yfs_client::EXIST) {
             fuse_reply_err(req, EEXIST);
@@ -566,7 +566,7 @@ main(int argc, char *argv[])
     //fuse_argv[fuse_argc++] = "allow_other";
 
     fuse_argv[fuse_argc++] = mountpoint;
-    fuse_argv[fuse_argc++] = "-d";
+    // fuse_argv[fuse_argc++] = "-d";
 
     fuse_args args = FUSE_ARGS_INIT( fuse_argc, (char **) fuse_argv );
     int foreground;
